@@ -174,7 +174,7 @@ class TestDetectPlatform:
         p = detect_platform(settings)
         assert p.device == "cuda"
         assert p.dtype == torch.bfloat16
-        assert p.attn_implementation == "flash_attention_2"
+        assert p.attn_implementation in ("flash_attention_2", "sdpa")
 
     @patch("torch.cuda.is_available", return_value=False)
     @patch("torch.backends.mps.is_available", return_value=True)

@@ -49,7 +49,12 @@ def detect_platform(settings: Settings) -> PlatformInfo:
         dtype = torch.float32
 
     if device == "cuda":
-        attn = "flash_attention_2"
+        try:
+            import flash_attn  # noqa: F401
+            attn = "flash_attention_2"
+        except ImportError:
+            attn = "sdpa"
+            logger.info("flash_attn not installed, using SDPA attention")
     else:
         attn = "eager"
 
