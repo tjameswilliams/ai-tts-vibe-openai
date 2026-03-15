@@ -1,6 +1,6 @@
 # VibeVoice TTS Server
 
-Local OpenAI-compatible text-to-speech API server powered by [Microsoft VibeVoice-7B](https://huggingface.co/microsoft/VibeVoice-7B-hf). Generates up to 45 minutes of speech in a single request, with voice cloning from reference audio.
+Local OpenAI-compatible text-to-speech API server powered by [VibeVoice-7B](https://huggingface.co/vibevoice/VibeVoice-7B). Generates up to 45 minutes of speech in a single request, with voice cloning from reference audio.
 
 ## Features
 
@@ -150,7 +150,7 @@ All settings can be set via environment variables with the `VIBEVOICE_TTS_` pref
 ```bash
 VIBEVOICE_TTS_HOST=0.0.0.0
 VIBEVOICE_TTS_PORT=8100
-VIBEVOICE_TTS_MODEL_ID=microsoft/VibeVoice-7B-hf
+VIBEVOICE_TTS_MODEL_ID=vibevoice/VibeVoice-7B
 VIBEVOICE_TTS_DEVICE=auto          # auto, cuda, mps, cpu
 VIBEVOICE_TTS_DTYPE=auto           # auto, bfloat16, float32
 VIBEVOICE_TTS_IDLE_TIMEOUT=300     # seconds before unloading model (0 = never)
@@ -207,6 +207,6 @@ By default, `max_new_tokens=0` (unlimited), allowing the model to generate until
 
 This server code is released under the [MIT License](LICENSE).
 
-**Model license note:** Microsoft released VibeVoice-7B under the MIT License. However, Microsoft's model card states the model is "limited to research purpose use" and later removed the TTS code from their official repository citing misuse concerns. Community forks and model weights remain available under MIT. Users should review Microsoft's [model card](https://huggingface.co/microsoft/VibeVoice-7B-hf) and applicable terms before deploying in production.
+**Model license note:** Microsoft released VibeVoice-7B under the MIT License. However, Microsoft's model card states the model is "limited to research purpose use" and later removed the TTS code from their official repository citing misuse concerns. Community forks and model weights remain available under MIT. Users should review the [model card](https://huggingface.co/vibevoice/VibeVoice-7B) and applicable terms before deploying in production.
 
 This project is an independent wrapper and is not affiliated with or endorsed by Microsoft.

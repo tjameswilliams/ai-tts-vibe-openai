@@ -295,4 +295,4 @@ class TestHealth:
         assert body["model_loaded"] is True
         assert body["device"] == "cpu"
         assert body["dtype"] == "torch.float32"
-        assert body["model"] == "microsoft/VibeVoice-7B-hf"
+        assert body["model"] == "vibevoice/VibeVoice-7B"

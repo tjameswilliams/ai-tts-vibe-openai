@@ -61,7 +61,7 @@ class TestSettings:
         s = Settings()
         assert s.host == "0.0.0.0"
         assert s.port == 8100
-        assert s.model_id == "microsoft/VibeVoice-7B-hf"
+        assert s.model_id == "vibevoice/VibeVoice-7B"
         assert s.device == "auto"
         assert s.dtype == "auto"
         assert s.idle_timeout == 300

@@ -16,7 +16,7 @@ def settings():
     return Settings(
         host="127.0.0.1",
         port=8100,
-        model_id="microsoft/VibeVoice-7B-hf",
+        model_id="vibevoice/VibeVoice-7B",
         device="cpu",
         dtype="float32",
         idle_timeout=300,

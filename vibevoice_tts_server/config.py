@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     host: str = "0.0.0.0"
     port: int = 8100
-    model_id: str = "microsoft/VibeVoice-7B-hf"
+    model_id: str = "vibevoice/VibeVoice-7B"
     cache_dir: str | None = None
     device: str = "auto"
     dtype: str = "auto"
