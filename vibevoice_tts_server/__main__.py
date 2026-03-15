@@ -7,7 +7,7 @@ import os
 def main():
     parser = argparse.ArgumentParser(description="VibeVoice-TTS OpenAI-compatible API server")
     parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=8100, help="Bind port (default: 8100)")
+    parser.add_argument("--port", type=int, default=8101, help="Bind port (default: 8100)")
     parser.add_argument("--device", default=None, help="Device: auto, cuda, mps, cpu")
     parser.add_argument("--dtype", default=None, help="Dtype: auto, bfloat16, float32")
     parser.add_argument("--idle-timeout", type=int, default=None, help="Idle timeout in seconds (0=never unload)")

@@ -15,7 +15,7 @@ def settings():
     """Default settings for testing."""
     return Settings(
         host="127.0.0.1",
-        port=8100,
+        port=8101,
         model_id="vibevoice/VibeVoice-7B",
         device="cpu",
         dtype="float32",

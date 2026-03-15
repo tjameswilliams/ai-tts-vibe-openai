@@ -53,7 +53,7 @@ vibevoice-tts-server --device cuda --port 8100 --idle-timeout 600
 ### 3. Generate speech
 
 ```bash
-curl -X POST http://localhost:8100/v1/audio/speech \
+curl -X POST http://localhost:8101/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Hello world, this is VibeVoice!", "voice": "alloy"}' \
   --output hello.mp3
@@ -64,7 +64,7 @@ curl -X POST http://localhost:8100/v1/audio/speech \
 Upload a reference audio file to clone a speaker's voice:
 
 ```bash
-curl -X POST http://localhost:8100/v1/audio/speech/upload \
+curl -X POST http://localhost:8101/v1/audio/speech/upload \
   -F "input=Welcome to the show, I'm your host." \
   -F "voice=alloy" \
   -F "response_format=wav" \
@@ -75,7 +75,7 @@ curl -X POST http://localhost:8100/v1/audio/speech/upload \
 Or pass a file path via the JSON endpoint:
 
 ```bash
-curl -X POST http://localhost:8100/v1/audio/speech \
+curl -X POST http://localhost:8101/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{
     "input": "Welcome to the show.",
@@ -149,7 +149,7 @@ All settings can be set via environment variables with the `VIBEVOICE_TTS_` pref
 
 ```bash
 VIBEVOICE_TTS_HOST=0.0.0.0
-VIBEVOICE_TTS_PORT=8100
+VIBEVOICE_TTS_PORT=8101
 VIBEVOICE_TTS_MODEL_ID=vibevoice/VibeVoice-7B
 VIBEVOICE_TTS_DEVICE=auto          # auto, cuda, mps, cpu
 VIBEVOICE_TTS_DTYPE=auto           # auto, bfloat16, float32

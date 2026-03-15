@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     model_config = {"env_prefix": "VIBEVOICE_TTS_"}
 
     host: str = "0.0.0.0"
-    port: int = 8100
+    port: int = 8101
     model_id: str = "vibevoice/VibeVoice-7B"
     cache_dir: str | None = None
     device: str = "auto"

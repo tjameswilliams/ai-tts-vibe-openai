@@ -60,7 +60,7 @@ class TestSettings:
     def test_defaults(self):
         s = Settings()
         assert s.host == "0.0.0.0"
-        assert s.port == 8100
+        assert s.port == 8101
         assert s.model_id == "vibevoice/VibeVoice-7B"
         assert s.device == "auto"
         assert s.dtype == "auto"
