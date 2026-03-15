@@ -20,6 +20,8 @@ _device: str | None = None
 _dtype: torch.dtype | None = None
 _loaded: bool = False
 
+SAMPLE_RATE = 24000
+
 
 @dataclass
 class PlatformInfo:
@@ -57,7 +59,10 @@ def detect_platform(settings: Settings) -> PlatformInfo:
 def load_model(settings: Settings) -> None:
     """Download (if needed) and load the model + processor."""
     global _model, _processor, _device, _dtype, _loaded
-    from transformers import AutoProcessor, AutoModel
+    from vibevoice.modular.modeling_vibevoice_inference import (
+        VibeVoiceForConditionalGenerationInference,
+    )
+    from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
 
     platform = detect_platform(settings)
     _device = platform.device
@@ -71,7 +76,7 @@ def load_model(settings: Settings) -> None:
         platform.attn_implementation,
     )
 
-    _processor = AutoProcessor.from_pretrained(
+    _processor = VibeVoiceProcessor.from_pretrained(
         settings.model_id,
         cache_dir=settings.cache_dir,
     )
@@ -91,9 +96,15 @@ def load_model(settings: Settings) -> None:
     else:
         model_kwargs["device_map"] = platform.device
 
-    _model = AutoModel.from_pretrained(settings.model_id, **model_kwargs)
-    _loaded = True
+    _model = VibeVoiceForConditionalGenerationInference.from_pretrained(
+        settings.model_id, **model_kwargs
+    )
+    _model.eval()
 
+    # Set default diffusion steps
+    _model.set_ddpm_inference_steps(num_steps=settings.n_diffusion_steps)
+
+    _loaded = True
     logger.info("Model loaded successfully")
 
 
@@ -142,57 +153,68 @@ def generate_speech(
     _steps = n_diffusion_steps if n_diffusion_steps is not None else settings.n_diffusion_steps
     _max_tokens = max_new_tokens if max_new_tokens is not None else settings.max_new_tokens
 
-    # Build the generation inputs
+    # Update diffusion steps if different from current
+    _model.set_ddpm_inference_steps(num_steps=_steps)
+
+    # Format text with speaker prefix for VibeVoice
+    # VibeVoice expects: "Speaker 1: text\n"
+    script = f"Speaker 1: {text}"
+
+    # Prepare voice samples for cloning
+    voice_samples: list[str] = []
+    is_prefill = False
+    if reference_audio is not None:
+        ref_path = str(reference_audio)
+        if Path(ref_path).exists():
+            voice_samples = [ref_path]
+            is_prefill = True
+
+    # Process inputs
+    inputs = _processor(
+        text=[script],
+        voice_samples=[voice_samples] if voice_samples else None,
+        padding=True,
+        return_tensors="pt",
+        return_attention_mask=True,
+    )
+
+    # Move tensors to device
+    inputs = {k: v.to(_device) if torch.is_tensor(v) else v for k, v in inputs.items()}
+
+    # Build generation kwargs
     # max_new_tokens are audio frames at 7.5 Hz (e.g. 20250 tokens ≈ 45 min).
     # 0 or None = unlimited — model generates until it finishes the script.
-    gen_kwargs: dict = {}
+    gen_kwargs: dict = {
+        "cfg_scale": _cfg,
+        "tokenizer": _processor.tokenizer,
+        "is_prefill": is_prefill,
+    }
     if _max_tokens and _max_tokens > 0:
         gen_kwargs["max_new_tokens"] = _max_tokens
 
-    # Prepare inputs based on whether we have reference audio
-    if reference_audio is not None:
-        ref_path = str(reference_audio)
-        inputs = _processor(
-            text=text,
-            speaker=speaker,
-            audio_reference=ref_path,
-            return_tensors="pt",
-        )
-    else:
-        inputs = _processor(
-            text=text,
-            speaker=speaker,
-            return_tensors="pt",
-        )
-
-    inputs = {k: v.to(_device) if hasattr(v, "to") else v for k, v in inputs.items()}
-
-    # Add VibeVoice-specific generation params
-    gen_kwargs["cfg_scale"] = _cfg
-    gen_kwargs["n_diffusion_steps"] = _steps
-
     with torch.no_grad():
-        output = _model.generate(**inputs, **gen_kwargs)
+        outputs = _model.generate(**inputs, **gen_kwargs)
 
-    # Extract audio from model output
-    if hasattr(output, "audio"):
-        audio = output.audio.cpu().numpy().squeeze()
-    elif isinstance(output, dict) and "audio" in output:
-        audio = output["audio"].cpu().numpy().squeeze()
-    elif isinstance(output, torch.Tensor):
-        audio = output.cpu().numpy().squeeze()
+    # Extract audio from VibeVoiceGenerationOutput
+    audio_tensor = outputs.speech_outputs[0]
+
+    # Convert to numpy
+    if torch.is_tensor(audio_tensor):
+        audio = audio_tensor.cpu().float().numpy()
     else:
-        audio = output[0].cpu().numpy().squeeze()
+        audio = np.asarray(audio_tensor, dtype=np.float32)
+
+    # Squeeze extra dimensions
+    audio = audio.squeeze()
 
     # Apply speed adjustment if needed
-    sample_rate = getattr(_processor, "sampling_rate", 24000)
     if speed != 1.0 and speed > 0:
         import scipy.signal
         target_len = int(len(audio) / speed)
         if target_len > 0:
             audio = scipy.signal.resample(audio, target_len)
 
-    return audio, sample_rate
+    return audio, SAMPLE_RATE
 
 
 def get_device() -> str:
