@@ -163,6 +163,19 @@ class TestCreateSpeech:
         )
         assert resp.status_code == 200
 
+    async def test_multi_speaker_json(self, client):
+        """Multi-speaker script with list of reference_audio paths via instructions."""
+        resp = await client.post(
+            "/v1/audio/speech",
+            json={
+                "input": "Speaker 1: Hello.\nSpeaker 2: Hi there.",
+                "instructions": json.dumps({
+                    "reference_audio": ["/tmp/speaker1.wav", "/tmp/speaker2.wav"],
+                }),
+            },
+        )
+        assert resp.status_code == 200
+
     async def test_all_voices_accepted(self, client):
         """Every mapped voice name should work."""
         for voice in ["alloy", "echo", "fable", "onyx", "nova", "shimmer", "sage"]:
@@ -186,12 +199,26 @@ class TestCreateSpeechUpload:
         assert resp.status_code == 200
         assert resp.headers["content-type"] == "audio/wav"
 
-    async def test_upload_with_reference_audio(self, client, ref_audio_wav):
-        """Upload endpoint accepts a reference audio file."""
+    async def test_upload_with_single_reference_audio(self, client, ref_audio_wav):
+        """Upload endpoint accepts a single reference audio file."""
         resp = await client.post(
             "/v1/audio/speech/upload",
             data={"input": "Clone this voice", "voice": "alloy", "response_format": "wav"},
-            files={"reference_audio": ("speaker.wav", ref_audio_wav, "audio/wav")},
+            files=[("reference_audio", ("speaker.wav", ref_audio_wav, "audio/wav"))],
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "audio/wav"
+
+    async def test_upload_with_multiple_reference_audio(self, client, ref_audio_wav):
+        """Upload endpoint accepts multiple reference audio files for multi-speaker."""
+        multi_speaker_text = "Speaker 1: Hello from speaker one.\nSpeaker 2: And hello from speaker two."
+        resp = await client.post(
+            "/v1/audio/speech/upload",
+            data={"input": multi_speaker_text, "response_format": "wav"},
+            files=[
+                ("reference_audio", ("speaker1.wav", ref_audio_wav, "audio/wav")),
+                ("reference_audio", ("speaker2.wav", ref_audio_wav, "audio/wav")),
+            ],
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"] == "audio/wav"

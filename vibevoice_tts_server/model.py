@@ -141,7 +141,7 @@ def generate_speech(
     speaker: str,
     *,
     settings: Settings,
-    reference_audio: str | Path | None = None,
+    reference_audio: str | Path | list[str | Path] | None = None,
     cfg_scale: float | None = None,
     n_diffusion_steps: int | None = None,
     max_new_tokens: int | None = None,
@@ -163,16 +163,30 @@ def generate_speech(
 
     # Format text with speaker prefix for VibeVoice
     # VibeVoice expects: "Speaker 1: text\n"
-    script = f"Speaker 1: {text}"
+    # If the text already contains "Speaker N:" prefixes, pass it through as-is
+    import re
+    if re.search(r"^Speaker \d+:", text, re.MULTILINE):
+        script = text
+    else:
+        script = f"Speaker 1: {text}"
 
     # Prepare voice samples for cloning
+    # reference_audio can be a single path (str/Path) or a list of paths
+    # (one per speaker, ordered Speaker 1, Speaker 2, etc.)
     voice_samples: list[str] = []
     is_prefill = False
     if reference_audio is not None:
-        ref_path = str(reference_audio)
-        if Path(ref_path).exists():
-            voice_samples = [ref_path]
-            is_prefill = True
+        if isinstance(reference_audio, (list, tuple)):
+            for ref in reference_audio:
+                ref_path = str(ref)
+                if Path(ref_path).exists():
+                    voice_samples.append(ref_path)
+                    is_prefill = True
+        else:
+            ref_path = str(reference_audio)
+            if Path(ref_path).exists():
+                voice_samples = [ref_path]
+                is_prefill = True
 
     # Process inputs
     inputs = _processor(

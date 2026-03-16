@@ -84,6 +84,8 @@ async def create_speech(request: SpeechRequest):
             cfg_scale = extra.get("cfg_scale")
             n_diffusion_steps = extra.get("n_diffusion_steps")
             max_new_tokens = extra.get("max_new_tokens")
+            # reference_audio can be a single path or a list of paths
+            # (one per speaker for multi-speaker scripts)
             reference_audio = extra.get("reference_audio")
         except (json.JSONDecodeError, TypeError):
             pass  # Ignore non-JSON instructions
@@ -118,9 +120,16 @@ async def create_speech_with_upload(
     speed: float = Form(1.0),
     model: str = Form("vibevoice-tts"),
     instructions: str | None = Form(None),
-    reference_audio: UploadFile | None = File(None),
+    reference_audio: list[UploadFile] | None = File(None),
 ):
-    """Generate speech with optional reference audio file upload for voice cloning."""
+    """Generate speech with optional reference audio file uploads for voice cloning.
+
+    For multi-speaker scripts, upload multiple reference_audio files — one per
+    speaker, in order (Speaker 1, Speaker 2, etc.). The input text should use
+    "Speaker 1: ...\nSpeaker 2: ..." format.
+
+    For single-speaker, upload one file or omit entirely.
+    """
     if response_format not in SUPPORTED_FORMATS:
         return JSONResponse(
             status_code=400,
@@ -161,7 +170,7 @@ async def create_speech_with_upload(
     cfg_scale = None
     n_diffusion_steps = None
     max_new_tokens = None
-    ref_audio_path_from_instructions = None
+    ref_audio_paths_from_instructions = None
 
     if instructions:
         try:
@@ -169,22 +178,35 @@ async def create_speech_with_upload(
             cfg_scale = extra.get("cfg_scale")
             n_diffusion_steps = extra.get("n_diffusion_steps")
             max_new_tokens = extra.get("max_new_tokens")
-            ref_audio_path_from_instructions = extra.get("reference_audio")
+            ref_audio_paths_from_instructions = extra.get("reference_audio")
         except (json.JSONDecodeError, TypeError):
             pass
 
-    # Handle reference audio: uploaded file takes priority over instructions path
-    ref_audio_path = None
-    tmp_ref = None
+    # Handle reference audio uploads: save to temp files
+    # Multiple files supported for multi-speaker (one per speaker, ordered)
+    tmp_files: list[str] = []
+    ref_audio_paths: str | list[str] | None = None
 
-    if reference_audio is not None and reference_audio.filename:
-        suffix = Path(reference_audio.filename).suffix or ".wav"
-        tmp_ref = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        tmp_ref.write(await reference_audio.read())
-        tmp_ref.close()
-        ref_audio_path = tmp_ref.name
-    elif ref_audio_path_from_instructions:
-        ref_audio_path = ref_audio_path_from_instructions
+    has_uploads = (
+        reference_audio is not None
+        and len(reference_audio) > 0
+        and reference_audio[0].filename
+    )
+
+    if has_uploads:
+        for upload in reference_audio:
+            if upload.filename:
+                suffix = Path(upload.filename).suffix or ".wav"
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                tmp.write(await upload.read())
+                tmp.close()
+                tmp_files.append(tmp.name)
+        if len(tmp_files) == 1:
+            ref_audio_paths = tmp_files[0]
+        elif len(tmp_files) > 1:
+            ref_audio_paths = tmp_files
+    elif ref_audio_paths_from_instructions:
+        ref_audio_paths = ref_audio_paths_from_instructions
 
     try:
         await ensure_model(settings)
@@ -196,7 +218,7 @@ async def create_speech_with_upload(
                 input,
                 speaker,
                 settings=settings,
-                reference_audio=ref_audio_path,
+                reference_audio=ref_audio_paths,
                 cfg_scale=cfg_scale,
                 n_diffusion_steps=n_diffusion_steps,
                 max_new_tokens=max_new_tokens,
@@ -206,8 +228,8 @@ async def create_speech_with_upload(
         audio_bytes, content_type = encode_audio(audio, sample_rate, response_format)
         return Response(content=audio_bytes, media_type=content_type)
     finally:
-        if tmp_ref is not None:
-            Path(tmp_ref.name).unlink(missing_ok=True)
+        for tmp_path in tmp_files:
+            Path(tmp_path).unlink(missing_ok=True)
 
 
 @app.get("/v1/audio/voices")

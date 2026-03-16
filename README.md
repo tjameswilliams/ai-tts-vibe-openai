@@ -72,7 +72,35 @@ curl -X POST http://localhost:8101/v1/audio/speech/upload \
   --output cloned.wav
 ```
 
-Or pass a file path via the JSON endpoint:
+### 5. Multi-speaker generation (one-shot)
+
+VibeVoice natively generates multi-speaker audio in a single pass. Format the
+input with `Speaker N:` prefixes and upload one reference audio file per speaker:
+
+```bash
+curl -X POST http://localhost:8101/v1/audio/speech/upload \
+  -F "input=Speaker 1: Welcome to the show, I'm your host.
+Speaker 2: Thanks for having me, great to be here.
+Speaker 1: Let's dive right in." \
+  -F "response_format=wav" \
+  -F "reference_audio=@host_voice.wav" \
+  -F "reference_audio=@guest_voice.wav" \
+  --output podcast.wav
+```
+
+Or via the JSON endpoint with file paths:
+
+```bash
+curl -X POST http://localhost:8101/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "Speaker 1: Welcome to the show.\nSpeaker 2: Thanks for having me.",
+    "instructions": "{\"reference_audio\": [\"/path/to/host.wav\", \"/path/to/guest.wav\"]}"
+  }' \
+  --output podcast.mp3
+```
+
+Single-speaker voice cloning also works with a single file path:
 
 ```bash
 curl -X POST http://localhost:8101/v1/audio/speech \
@@ -104,7 +132,7 @@ JSON body (OpenAI-compatible):
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `reference_audio` | string | Path to reference audio for voice cloning |
+| `reference_audio` | string or string[] | Path(s) to reference audio — single path for one speaker, array for multi-speaker |
 | `cfg_scale` | float | Classifier-free guidance scale (default: 1.3) |
 | `n_diffusion_steps` | int | Diffusion denoising steps (default: 10) |
 | `max_new_tokens` | int | Audio token limit at 7.5 Hz (0 = unlimited) |
@@ -117,7 +145,7 @@ Multipart form — same fields as above, plus:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `reference_audio` | file | Audio file upload for voice cloning |
+| `reference_audio` | file(s) | One or more audio files for voice cloning — upload multiple for multi-speaker (ordered by Speaker 1, 2, etc.) |
 
 ### `GET /v1/audio/voices`
 
